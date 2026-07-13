@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coletor de Demanda — DAT Sul (v12)</title>
+<style>
+  :root {
+    --bg:#f8fafc; --panel:#fff; --border:#e2e8f0; --b2:#cbd5e1;
+    --text:#0f172a; --muted:#64748b;
+    --accent:#0284c7; --accent2:#0369a1; --soft:#e0f2fe;
+    --ok:#16a34a; --ok-soft:#dcfce7; --warn:#ea580c; --warn-soft:#fed7aa;
+    --err:#dc2626; --err-soft:#fee2e2; --gestao:#6366f1; --gestao-soft:#eef2ff;
+    --apoio:#b45309; --apoio-soft:#fef3c7; --pend:#a21caf; --pend-soft:#fae8ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .top { background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; gap: 14px; justify-content: space-between; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 50; }
+  .top h1 { margin: 0; font-size: 16px; }
+  .top .tag { background: var(--soft); color: var(--accent2); padding: 2px 8px; border-radius: 4px; font: 700 11px inherit; margin-left: 8px; }
+  .top .ver { background: #ede9fe; color: #5b21b6; padding: 2px 8px; border-radius: 4px; font: 700 11px inherit; margin-left: 4px; }
+  .top-r { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .autosave { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .autosave .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; }
+  .btn { background: var(--accent); color: white; border: 0; padding: 7px 14px; border-radius: 6px; font: 13px inherit; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+  .btn:hover { background: var(--accent2); }
+  .btn.alt { background: white; color: var(--text); border: 1px solid var(--b2); }
+  .btn.alt:hover { background: var(--bg); }
+  .btn.ok { background: var(--ok); }
+  .btn.ok:hover { background: #15803d; }
+  .btn.lg { padding: 10px 16px; font-size: 14px; font-weight: 600; border-radius: 8px; }
+  .btn.lg.on { background: var(--accent2); box-shadow: 0 0 0 2px var(--soft); }
+  .btn.sec { background: white; color: var(--accent2); border: 2px solid var(--accent); }
+  .btn.sec.on { background: var(--soft); }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.danger { background: white; color: var(--err); border: 1px solid var(--err-soft); }
+  .btn.danger:hover { background: var(--err-soft); }
+  .ic { background: 0; border: 1px solid transparent; border-radius: 4px; width: 28px; height: 28px; padding: 0; cursor: pointer; font-size: 14px; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
+  .wrap { padding: 18px 24px 100px; max-width: 1100px; margin: 0 auto; }
+  .help { background: var(--soft); border: 1px solid #7dd3fc; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: var(--accent2); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 14px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .n { background: var(--accent); color: white; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card p.sub { margin: -6px 0 14px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  .fd { margin-bottom: 12px; }
+  .fd label { display: block; font: 600 11px inherit; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+  .fd input, .fd select, .fd textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--b2); border-radius: 6px; font: 14px inherit; background: white; }
+  .fd input:focus, .fd select:focus, .fd textarea:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .fd .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .fd input:disabled, .fd select:disabled, .fd textarea:disabled { background: #f1f5f9; color: #94a3b8; }
+  .pct-pair { display: flex; gap: 14px; align-items: flex-end; }
+  .pct-pair .fd { flex: 1; margin-bottom: 0; }
+  .pct-input-wrap { position: relative; }
+  .pct-input-wrap span.suf { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; }
+  .pct-sum-note { margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .pct-sum-note.ok { background: var(--ok-soft); color: #166534; }
+  .pct-sum-note.warn { background: var(--warn-soft); color: #9a3412; }
+  .macro { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .macro.off { opacity: .55; }
+  .macro-hd { padding: 14px 18px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; gap: 14px; align-items: center; }
+  .macro-hd h3 { margin: 0; font-size: 15px; flex: 1; }
+  .macro-hd p { margin: 6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+  .macro-bd { padding: 16px 18px; display: none; }
+  .macro.on .macro-bd { display: block; }
+  .executo-switch {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    padding: 14px 20px; min-width: 220px; border: 2px solid var(--b2); border-radius: 10px;
+    background: #f1f5f9; cursor: pointer; flex-shrink: 0; text-align: center;
+    transition: background .15s, border-color .15s, box-shadow .15s;
+    font: inherit; color: inherit;
+  }
+  .executo-switch:hover { border-color: var(--accent); background: #e8f4fc; }
+  .executo-switch-txt { font-weight: 700; font-size: 15px; color: #475569; line-height: 1.3; }
+  .executo-switch-hint { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .executo-switch.on {
+    background: #fff; border-color: var(--b2);
+    box-shadow: none;
+  }
+  .executo-switch.on .executo-switch-txt { color: #64748b; font-weight: 600; }
+  .executo-switch.on .executo-switch-hint { color: var(--muted); }
+  .executo-switch.on:hover {
+    background: var(--err-soft); border-color: #fca5a5;
+  }
+  .executo-switch.on:hover .executo-switch-txt { color: var(--err); }
+  .executo-switch.on:hover .executo-switch-hint { color: #b91c1c; }
+  .executo-switch:not(.on) {
+    background: white; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(2,132,199,.1);
+  }
+  .executo-switch:not(.on) .executo-switch-txt { color: var(--accent2); }
+  .executo-switch:not(.on) .executo-switch-hint { color: var(--accent2); opacity: .85; }
+  @media (max-width: 720px) {
+    .macro-hd { flex-wrap: wrap; align-items: flex-start; }
+    .executo-switch { width: 100%; min-width: 0; }
+  }
+  .proc { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; background: #fafbfc; }
+  .proc.off { opacity: .55; background: #f1f5f9; }
+  .proc h4 { margin: 0 0 6px; font-size: 14px; }
+  .proc .desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.4; }
+  .pct-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .pct-row input { max-width: 100px; text-align: right; }
+  .pct-row span { font-size: 13px; color: var(--muted); }
+  .pct-hint { display: block; font-size: 12px; color: var(--accent2); margin-top: 4px; font-weight: 500; }
+  .sum-bar { margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+  .sum-bar.ok { background: var(--ok-soft); color: #166534; }
+  .sum-bar.warn { background: var(--warn-soft); color: #9a3412; }
+  .vol-block { margin-bottom: 14px; }
+  .sum-sticky { position: sticky; top: 52px; z-index: 40; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .confirm-page { max-width: 640px; margin: 40px auto; text-align: center; }
+  .confirm-page .icon-big { font-size: 56px; margin-bottom: 16px; }
+  .confirm-page h2 { margin: 0 0 12px; font-size: 22px; color: var(--ok); }
+  .confirm-page .csv-box { background: #eff6ff; border: 2px solid #93c5fd; border-radius: 12px; padding: 24px 28px; margin: 28px 0; text-align: left; }
+  .confirm-page .csv-box strong { display: block; font-size: 16px; color: #1e40af; margin-bottom: 10px; }
+  .confirm-page .csv-box p { margin: 0; font-size: 14px; color: #1e3a8a; line-height: 1.55; }
+  .confirm-page .csv-box a { color: #1d4ed8; font-weight: 600; }
+  .confirm-page .edit-note { font-size: 13px; color: var(--muted); margin-top: 20px; }
+  label.na { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+  label.na input { width: auto; }
+  .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 2px; }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font: 700 10px inherit; text-transform: uppercase; letter-spacing: .4px; }
+  .badge.gestao { background: var(--gestao); color: white; }
+  .badge.op { background: #0ea5e9; color: white; }
+  .badge.apoio { background: var(--apoio); color: white; }
+  .badge.pend { background: var(--pend); color: white; }
+  .badge.filled { background: var(--ok-soft); color: #166534; font-weight: 600; text-transform: none; font-size: 11px; }
+  .badge.custom { background: #16a34a; color: white; }
+  .empt { text-align: center; padding: 40px; color: var(--muted); font-style: italic; }
+  .plantao-extra, .sgitd-extra { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .mbd { position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 1000; display: none; align-items: center; justify-content: center; }
+  .mbd.on { display: flex; }
+  .md { background: white; border-radius: 10px; width: 90%; max-width: 560px; max-height: 90vh; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,.25); }
+  .mdh { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .mdh h3 { margin: 0; font-size: 16px; }
+  .mdb { padding: 20px; }
+  .mdb p { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .mdf { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .saz { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .saz > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .saz label { font: 600 10px inherit; color: var(--muted); text-transform: uppercase; }
+  .saz input { width: 100%; padding: 4px; text-align: center; font-size: 12px; }
+  .banner { border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; display: flex; gap: 14px; align-items: flex-start; }
+  .banner.success { background: var(--ok-soft); border: 1px solid #86efac; }
+  .banner.success strong { color: #166534; }
+  .banner .icon { font-size: 22px; line-height: 1; }
+  .banner .txt { flex: 1; font-size: 13px; color: #166534; }
+  .banner .txt p { margin: 4px 0 0; }
+  #wrap-form.locked { position: relative; }
+  #wrap-form.locked::after { content: ''; }
+  .final-card { text-align: center; padding: 28px 20px; }
+  .final-card p { color: var(--muted); font-size: 13px; max-width: 520px; margin: 8px auto 18px; }
+  .cargo-confirm-list { font-size: 13px; color: var(--muted); margin: 10px 0; padding-left: 18px; }
+  input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .field-err input, .field-err select, .field-err textarea, input.input-err, select.input-err { border-color: var(--err) !important; background: var(--err-soft) !important; }
+  .field-err label { color: var(--err) !important; }
+  .proc.proc-err { border-color: #fca5a5; background: var(--err-soft) !important; }
+  .macro-bd.macro-bd-err { outline: 2px solid #fca5a5; outline-offset: -2px; border-radius: 0 0 10px 10px; }
+  .val-err-msg { font-size: 12px; color: var(--err); font-weight: 600; margin-top: 6px; line-height: 1.4; }
+  .val-banner { background: var(--err-soft); border: 2px solid #fca5a5; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; color: #991b1b; font-size: 13px; }
+  .val-banner strong { display: block; font-size: 14px; margin-bottom: 8px; }
+  .val-banner ul { margin: 0; padding-left: 18px; max-height: 180px; overflow: auto; }
+  .val-banner li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h1>Coletor de Demanda <span class="tag">DAT Sul</span><span class="ver">v12</span></h1>
+  </div>
+  <div class="top-r">
+    <div class="autosave" id="autosave-ind"><span class="dot"></span><span id="autosave-txt">Salvamento automático ativo</span></div>
+    <button class="btn alt sm" onclick="exportCSV()">Exportar CSV</button>
+  </div>
+</div>
+
+<div class="wrap" id="pagina-formulario">
+  <div class="help">
+    Suas respostas são <strong>salvas automaticamente</strong> neste navegador enquanto você preenche.
+    Ao concluir, clique em <strong>“Concluir e enviar respostas”</strong>.
+  </div>
+
+  <div id="val-banner" class="val-banner" style="display:none" role="alert"></div>
+
+  <form id="coletor-form" action="https://api.web3forms.com/submit" method="POST" onsubmit="event.preventDefault(); concluirEnviar();">
+    <input type="hidden" name="access_key" value="591dd23e-b81b-4374-bc7e-eec5f17a1c44">
+    <input type="hidden" name="subject" id="hf-subject" value="Coleta DAT Sul">
+    <input type="hidden" name="from_name" value="Coletor DAT Sul">
+    <input type="hidden" name="versao_coletor" value="html-v12">
+    <input type="hidden" name="cobertura_itd_exaustiva" id="hf-cobertura" value="">
+    <input type="hidden" name="sgitd_percentual" id="hf-sgitd-pct" value="">
+    <input type="hidden" name="sgitd_comentario" id="hf-sgitd-obs" value="">
+    <input type="hidden" name="payload_json" id="hf-payload" value="">
+
+  <div id="wrap-form">
+
+  <div class="card">
+    <h2><span class="n">1</span> Identificação</h2>
+    <div class="grid2">
+      <div class="fd" data-val-field="f-nome">
+        <label>Nome completo</label>
+        <input id="f-nome" name="nome_completo" type="text" placeholder="Seu nome completo" oninput="onIdChange()">
+      </div>
+      <div class="fd" data-val-field="f-lotacao">
+        <label>Lotação</label>
+        <select id="f-lotacao" name="lotacao" onchange="onIdChange()"></select>
+        <div class="hint">Sua Inspetoria Fazendária (INFAZ) ou a sede da DAT Sul — Diretoria</div>
+      </div>
+      <div class="fd" data-val-field="f-cargo">
+        <label>Cargo</label>
+        <select id="f-cargo" name="cargo" onchange="onCargoSelectChange()"></select>
+      </div>
+      <div class="fd">
+        <label>Carga horária semanal</label>
+        <select id="f-carga" name="carga_horaria_semanal" onchange="onIdChange()">
+          <option value="30">30 horas</option>
+          <option value="40" selected>40 horas</option>
+        </select>
+      </div>
+    </div>
+    <div class="fd">
+      <label>Trabalha em regime de plantão / escala?</label>
+      <select id="f-plantao" name="plantao" onchange="onPlantaoChange()">
+        <option value="nao">Não</option>
+        <option value="sim">Sim</option>
+      </select>
+      <div id="plantao-extra" class="plantao-extra" style="display:none">
+        <label style="display:block;font:600 11px inherit;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Regime de plantão / escala</label>
+        <select id="f-regime" name="regime_plantao" data-val-field="f-regime" onchange="onIdChange()"></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span> Divisão do seu tempo entre ITD e outras atividades</h2>
+    <p class="sub">
+      Considerando o conjunto do seu trabalho mensal, qual percentual do seu tempo é dedicado a
+      atividades de <strong>ITD</strong> e qual percentual é dedicado a <strong>outras atividades não
+      relacionadas ao ITD</strong> (ex.: ICMS, cadastro, atendimento geral, outras demandas da INFAZ)?
+      A soma das duas respostas deve ser <strong>100%</strong>.
+    </p>
+    <div class="pct-pair">
+      <div class="fd" data-val-field="f-pct-itd">
+        <label>% do tempo em atividades de ITD</label>
+        <div class="pct-input-wrap">
+          <input type="number" id="f-pct-itd" name="pct_tempo_itd" min="0" max="100" step="1" placeholder="ex.: 70"
+            oninput="onPctItdInput()">
+          <span class="suf">%</span>
+        </div>
+      </div>
+      <div class="fd" data-val-field="f-pct-outros">
+        <label>% do tempo em outras atividades (não ITD)</label>
+        <div class="pct-input-wrap">
+          <input type="number" id="f-pct-outros" name="pct_tempo_outros" min="0" max="100" step="1" placeholder="ex.: 30"
+            oninput="onPctOutrosInput()">
+          <span class="suf">%</span>
+        </div>
+      </div>
+    </div>
+    <div id="pct-sum-note"></div>
+  </div>
+
+  <div class="card" id="card-sgitd">
+    <h2><span class="n">3</span> Percepção sobre o impacto do sistema SGITD</h2>
+    <p class="sub">
+      Esta pergunta busca sua <strong>percepção pessoal</strong> sobre o efeito do SGITD na demanda de
+      trabalho de ITD — não é necessário demonstrar uma relação exata de causa e efeito. Responda com
+      base na sua experiência no dia a dia.
+    </p>
+    <div class="fd" data-val-field="f-sgitd-percepcao">
+      <label>Na sua percepção, desde a implementação do SGITD, a demanda de processos de ITD…</label>
+      <select id="f-sgitd-percepcao" name="sgitd_percepcao" onchange="onSgitdChange()">
+        <option value="">— Selecione —</option>
+        <option value="diminuiu">Diminuiu</option>
+        <option value="aumentou">Aumentou</option>
+        <option value="permaneceu">Permaneceu igual</option>
+      </select>
+    </div>
+    <div id="sgitd-extra" class="sgitd-extra" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span> Processos e etapas do ITD</h2>
+    <p class="sub">
+      Para cada <strong>processo</strong> de ITD que você executa, informe quantos processos trata por mês e
+      quantas <strong>horas médias gasta em cada um</strong> (não a soma de todos do mês). Depois, distribua
+      <strong>100% do tempo de um processo</strong> entre as <strong>etapas</strong> que o compõem.
+      Se você <strong>não executa</strong> uma etapa, marque a caixa correspondente — <strong>não use 0%</strong>.
+      Se faltar alguma etapa, use “Adicionar etapa” ao final do processo.
+    </p>
+    <div id="macros-container"></div>
+  </div>
+
+  </div><!-- /wrap-form -->
+
+  <div class="card" id="card-cobertura" style="display:none">
+    <h2><span class="n">5</span> Cobertura dos processos de ITD</h2>
+    <p class="sub">
+      Revise os processos e etapas que você preencheu na seção anterior. Esta pergunta ajuda a garantir
+      que nada ficou de fora da sua atuação em ITD.
+    </p>
+    <div class="fd" data-val-field="f-cobertura">
+      <label>Os processos e etapas listados acima para o seu cargo e lotação cobrem <strong>toda</strong> a sua atuação em processos de ITD?</label>
+      <select id="f-cobertura" name="cobertura_itd_exaustiva" onchange="onCoberturaChange()">
+        <option value="">— Selecione —</option>
+        <option value="sim">Sim — a lista cobre toda a minha atuação em ITD</option>
+        <option value="nao">Não — ainda executo processos de ITD que não apareceram na lista</option>
+      </select>
+      <div class="hint">Se a lista estiver completa, selecione “Sim” e siga para finalizar. Se faltar algum processo, selecione “Não” para informá-lo abaixo.</div>
+    </div>
+    <div id="adicionais-extra" style="display:none">
+      <p class="sub" style="margin-top:16px">
+        Selecione abaixo os <strong>processos de ITD</strong> que você executa e que <strong>não apareceram</strong>
+        na seção anterior. Preencha volume, tempo e distribuição de etapas da mesma forma. Se faltar alguma etapa,
+        use “Adicionar etapa” ao final de cada processo.
+      </p>
+      <div class="fd" id="fd-add-processo">
+        <label>Adicionar processo de ITD</label>
+        <select id="f-add-processo" onchange="adicionarProcessoExtra()">
+          <option value="">— Selecione um processo —</option>
+        </select>
+      </div>
+      <div id="adicionais-container"></div>
+      <div id="adicionais-vazio" class="empt" style="display:none;padding:24px"></div>
+    </div>
+  </div>
+
+  <div class="card final-card" id="final-card">
+    <h2 style="justify-content:center"><span class="n">6</span> Finalizar</h2>
+    <p>Revise suas respostas acima. Quando concluir o preenchimento, clique no botão abaixo para enviar
+      suas respostas.</p>
+    <button type="submit" class="btn ok lg" id="btn-concluir">✅ Concluir e enviar respostas</button>
+    <div id="envio-status" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
+  </div>
+  </form>
+</div>
+
+<div class="wrap confirm-page" id="pagina-confirmacao" style="display:none">
+  <div class="icon-big">✅</div>
+  <h2>Respostas enviadas com sucesso!</h2>
+  <p style="color:var(--muted);font-size:14px;margin:0">Suas respostas foram salvas automaticamente e registradas pela equipe do projeto.</p>
+
+  <div class="csv-box">
+    <strong>📎 Envie uma cópia do arquivo CSV para o e-mail abaixo</strong>
+    <p>Um arquivo CSV com suas respostas foi <strong>baixado automaticamente</strong> no seu computador.
+    Por favor, encaminhe esse arquivo para
+    <a href="mailto:joao.deolindo@elogroup.com.br">joao.deolindo@elogroup.com.br</a>
+    como <strong>cópia de segurança (backup)</strong>. Isso não substitui o envio automático — é apenas uma garantia extra.</p>
+  </div>
+
+  <button type="button" class="btn alt lg" onclick="editarRespostas()">✏️ Editar minhas respostas</button>
+  <p class="edit-note">Se precisar corrigir algo, clique acima para voltar ao formulário e reenviar.</p>
+</div>
+
+<div class="mbd" id="mbd" onclick="if(event.target===this) closeMd()"><div class="md" id="md"></div></div>
+
+<script src="mapa-dados-v4.js"></script>
+<script>
+const STORAGE_KEY = 'coletor-dat-sul-html-v12';
+const LOTACAO_COORD_LEGADO = 'Coordenação ITD DAT Sul';
+const MSG_ETAPA_PCT = 'Informe o percentual desta etapa ou marque "Não executo esta etapa".';
+const WEB3FORMS_URL = 'https://api.web3forms.com/submit';
+const WEB3FORMS_KEY = '591dd23e-b81b-4374-bc7e-eec5f17a1c44';
+const DIAS_UTEIS_MES = 22;
+const CARGOS_GESTAO = new Set(MAPA_DATA.cargosGestao);
+
+function descricaoPublica(text) {
+  if (!text) return '';
+  let t = text;
+  t = t.replace(/\s*\([^)]*não confirmad[^)]*\)/gi, '');
+  t = t.replace(/\s*\([^)]*citada na validação[^)]*\)/gi, '');
+  t = t.replace(/\s*[—–-]\s*responda apenas se[^.]*\./gi, '.');
+  t = t.replace(/\s*Não confirmad[ao][^.]*\./gi, '');
+  t = t.replace(/\s*Atribuição[^.]*\./gi, '');
+  return t.replace(/\s+/g, ' ').replace(/\s+\./g, '.').trim();
+}
+
+function defaultState() {
+  return {
+    nome: '', lotacao: '', cargo: '', cargaHoraria: 40,
+    plantao: { ativo: false, regime: '' },
+    dedicacao: { pctItd: null, pctOutros: null },
+    sgitd: { percepcao: '', percentual: null, comentario: '' },
+    macros: {},
+    coberturaItd: '',
+    macrosAdicionais: {},
+    enviado: { enviado: false, enviadoEm: null },
+  };
+}
+let state = defaultState();
+let modalCtx = null;
+let autosaveTimer = null;
+let pendingCargoValue = null;
+let errosValidacao = new Set();
+
+function temErro(id) { return errosValidacao.has(id); }
+function htmlErroInline(id) {
+  if (!temErro(id)) return '';
+  return `<div class="val-err-msg">${MSG_ETAPA_PCT}</div>`;
+}
+function limparErrosValidacao() {
+  errosValidacao = new Set();
+  const banner = $('val-banner');
+  if (banner) { banner.style.display = 'none'; banner.innerHTML = ''; }
+  document.querySelectorAll('.field-err').forEach(el => el.classList.remove('field-err'));
+}
+
+const $ = id => document.getElementById(id);
+function fmt(n, d=1) { return n==null||isNaN(n) ? '—' : Number(n).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+function escJs(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function escAttr(s) { return (s||'').replace(/[^a-z0-9]/gi,'_'); }
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function htmlExecutoSwitch(executa, mKey, adicional=false) {
+  const fn = adicional ? 'toggleMacroAdic' : 'toggleMacro';
+  const key = escJs(mKey);
+  if (executa) {
+    return `<button type="button" class="executo-switch on" onclick="${fn}('${key}',false)">
+      <span class="executo-switch-txt">Não executo este processo</span>
+      <span class="executo-switch-hint">Clique para recolher as etapas</span>
+    </button>`;
+  }
+  return `<button type="button" class="executo-switch" onclick="${fn}('${key}',true)">
+    <span class="executo-switch-txt">Executo este processo</span>
+    <span class="executo-switch-hint">Clique para abrir e preencher as etapas</span>
+  </button>`;
+}
+
+/* ---------- estrutura de dados ---------- */
+
+function macroKey(m) { return m.nome; }
+function grupoKey(g) { return g.codigo; }
+
+function getMacroEntry(mKey) {
+  if (!state.macros[mKey]) {
+    state.macros[mKey] = {
+      executa: true, volMes: null, tempoHoras: null,
+      sazon: [], temSazon: false, obs: '', grupos: {}, custom: [],
+    };
+  }
+  if (!state.macros[mKey].grupos) state.macros[mKey].grupos = {};
+  if (!state.macros[mKey].custom) state.macros[mKey].custom = [];
+  return state.macros[mKey];
+}
+
+function getGrupoEntry(mKey, gKey) {
+  const m = getMacroEntry(mKey);
+  if (!m.grupos[gKey]) {
+    m.grupos[gKey] = { executa: true, percentual: null, obs: '' };
+  }
+  return m.grupos[gKey];
+}
+
+function getMacroAdicionalEntry(mKey) {
+  if (!state.macrosAdicionais[mKey]) {
+    state.macrosAdicionais[mKey] = {
+      executa: true, volMes: null, tempoHoras: null,
+      sazon: [], temSazon: false, obs: '', grupos: {}, custom: [],
+    };
+  }
+  if (!state.macrosAdicionais[mKey].grupos) state.macrosAdicionais[mKey].grupos = {};
+  if (!state.macrosAdicionais[mKey].custom) state.macrosAdicionais[mKey].custom = [];
+  return state.macrosAdicionais[mKey];
+}
+
+function getGrupoAdicionalEntry(mKey, gKey) {
+  const m = getMacroAdicionalEntry(mKey);
+  if (!m.grupos[gKey]) {
+    m.grupos[gKey] = { executa: true, percentual: null, obs: '' };
+  }
+  return m.grupos[gKey];
+}
+
+function detectaSazon(arr, volMes) {
+  if (!arr || arr.length !== 12) return false;
+  const base = volMes ?? 0;
+  return arr.some(v => v !== base) || new Set(arr).size > 1;
+}
+
+function horasFromPct(tempoHorasMacro, pct) {
+  const horasMes = (tempoHorasMacro || 0) * ((pct || 0) / 100);
+  const horasDia = horasMes / DIAS_UTEIS_MES;
+  return { horasMes, horasDia };
+}
+
+function pctHelperHtml(tempoHorasPorProcesso, pct) {
+  if (!pct || pct <= 0) return '';
+  if (!tempoHorasPorProcesso) {
+    return '<span class="pct-hint">Informe acima as horas médias gastas em <strong>cada processo</strong> para ver a estimativa.</span>';
+  }
+  const { horasMes, horasDia } = horasFromPct(tempoHorasPorProcesso, pct);
+  return `<span class="pct-hint">≈ ${fmt(horasMes, 1)} h em cada processo nesta etapa · ≈ ${fmt(horasDia, 2)} h/dia útil (referência, 22 dias/mês)</span>`;
+}
+
+function textoSomaEtapas(soma, pctOk) {
+  return `Acumulado: ${fmt(soma, 0)}% ${pctOk ? '✓' : soma > 100 ? '— ultrapassou 100%, redistribua' : '— falta para 100%'}`;
+}
+
+function somaEtapasAtivas(mKey, macro) {
+  let s = 0;
+  gruposVisiveis(macro, state.cargo, state.lotacao).forEach(g => {
+    const ge = getGrupoEntry(mKey, grupoKey(g));
+    if (ge.executa !== false && ge.percentual != null && ge.percentual > 0) s += +ge.percentual;
+  });
+  getMacroEntry(mKey).custom.forEach(c => {
+    if (c.percentual != null && c.percentual > 0) s += +c.percentual;
+  });
+  return s;
+}
+
+function gruposVisiveis(macro, cargo, lotacao) {
+  const isCoord = lotacao === MAPA_DATA.coordArea;
+  return macro.grupos.filter(g => {
+    if (!g.cargos.includes(cargo)) return false;
+    if (!isCoord) return g.escopo === 'INFAZ';
+    if (cargo === 'Coordenador de Administração Tributária') {
+      return g.escopo === 'COORD' || g.escopo === 'INFAZ';
+    }
+    return g.escopo === 'INFAZ';
+  });
+}
+
+function macrosVisiveis() {
+  const { cargo, lotacao } = state;
+  if (!cargo || !lotacao) return [];
+  return MAPA_DATA.macros.filter(m => gruposVisiveis(m, cargo, lotacao).length > 0);
+}
+
+function gruposCatalogo(macro, lotacao) {
+  const isCoord = lotacao === MAPA_DATA.coordArea;
+  if (!isCoord) return macro.grupos.filter(g => g.escopo === 'INFAZ');
+  return macro.grupos.filter(g => g.escopo === 'INFAZ' || g.escopo === 'COORD');
+}
+
+function macrosJaListados() {
+  const keys = new Set(macrosVisiveis().map(m => macroKey(m)));
+  Object.keys(state.macrosAdicionais || {}).forEach(k => keys.add(k));
+  return keys;
+}
+
+function macrosDisponiveisAdicionar() {
+  const usados = macrosJaListados();
+  return MAPA_DATA.macros.filter(m => !usados.has(macroKey(m)));
+}
+
+function somaEtapasAtivasAdicional(mKey, macro) {
+  let s = 0;
+  gruposCatalogo(macro, state.lotacao).forEach(g => {
+    const ge = getGrupoAdicionalEntry(mKey, grupoKey(g));
+    if (ge.executa !== false && ge.percentual != null && ge.percentual > 0) s += +ge.percentual;
+  });
+  getMacroAdicionalEntry(mKey).custom.forEach(c => {
+    if (c.percentual != null && c.percentual > 0) s += +c.percentual;
+  });
+  return s;
+}
+
+/* ---------- inicialização e identificação ---------- */
+
+function initSelectors() {
+  $('f-lotacao').innerHTML = MAPA_DATA.lotacoes.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  $('f-cargo').innerHTML = '<option value="">— Selecione —</option>' +
+    MAPA_DATA.cargos.map(c => `<option value="${escHtml(c)}">${escHtml(c)}${CARGOS_GESTAO.has(c) ? ' (Gestão)' : ''}</option>`).join('');
+  $('f-regime').innerHTML = MAPA_DATA.plantaoRegimes.map(r => `<option value="${escHtml(r)}">${escHtml(r)}</option>`).join('');
+  if (!state.lotacao) state.lotacao = MAPA_DATA.lotacoes[0];
+  $('f-lotacao').value = state.lotacao;
+  $('f-cargo').value = state.cargo || '';
+  $('f-nome').value = state.nome || '';
+  $('f-carga').value = String(state.cargaHoraria || 40);
+  $('f-plantao').value = state.plantao.ativo ? 'sim' : 'nao';
+  $('f-pct-itd').value = state.dedicacao.pctItd ?? '';
+  $('f-pct-outros').value = state.dedicacao.pctOutros ?? '';
+  $('f-sgitd-percepcao').value = state.sgitd?.percepcao || '';
+  $('f-cobertura').value = state.coberturaItd || '';
+  onPlantaoChange(false);
+  onSgitdChange(false);
+  refreshPctSumNote();
+  $('f-regime').value = state.plantao.regime || MAPA_DATA.plantaoRegimes[0];
+}
+
+function onPlantaoChange(render=true) {
+  const sim = $('f-plantao').value === 'sim';
+  $('plantao-extra').style.display = sim ? 'block' : 'none';
+  state.plantao.ativo = sim;
+  state.plantao.regime = sim ? $('f-regime').value : '';
+  if (render) markDirty();
+}
+
+/* ---------- dedicação ITD × não-ITD ---------- */
+
+function clampPct(v) {
+  if (v === '' || v == null || isNaN(v)) return null;
+  v = Math.abs(Number(v)); // impede negativos
+  return Math.min(100, Math.round(v));
+}
+
+function onPctItdInput() {
+  const v = clampPct($('f-pct-itd').value);
+  state.dedicacao.pctItd = v;
+  if (v != null) {
+    const outros = Math.max(0, 100 - v);
+    state.dedicacao.pctOutros = outros;
+    $('f-pct-outros').value = outros;
+  }
+  refreshPctSumNote();
+  markDirty();
+}
+
+function onPctOutrosInput() {
+  const v = clampPct($('f-pct-outros').value);
+  state.dedicacao.pctOutros = v;
+  if (v != null) {
+    const itd = Math.max(0, 100 - v);
+    state.dedicacao.pctItd = itd;
+    $('f-pct-itd').value = itd;
+  }
+  refreshPctSumNote();
+  markDirty();
+}
+
+function refreshPctSumNote() {
+  const el = $('pct-sum-note');
+  const itd = state.dedicacao.pctItd, outros = state.dedicacao.pctOutros;
+  if (itd == null && outros == null) { el.innerHTML = ''; return; }
+  const soma = (itd||0) + (outros||0);
+  const ok = Math.abs(soma - 100) < 0.5;
+  el.innerHTML = `<div class="pct-sum-note ${ok?'ok':'warn'}">Soma: ${fmt(soma,0)}% ${ok?'✓':'— os dois percentuais devem somar 100%'}</div>`;
+}
+
+/* ---------- SGITD ---------- */
+
+function onSgitdChange(render=true) {
+  if (!state.sgitd) state.sgitd = { percepcao: '', percentual: null, comentario: '' };
+  state.sgitd.percepcao = $('f-sgitd-percepcao').value;
+  const box = $('sgitd-extra');
+  const p = state.sgitd.percepcao;
+  if (!p) { box.style.display = 'none'; box.innerHTML = ''; if (render) markDirty(); return; }
+
+  box.style.display = 'block';
+  let pctField = '';
+  if (p === 'diminuiu' || p === 'aumentou') {
+    const lbl = p === 'diminuiu' ? 'Percentual médio de queda percebido' : 'Percentual médio de aumento percebido';
+    pctField = `<div class="fd ${temErro('f-sgitd-pct')?'field-err':''}" data-val-field="f-sgitd-pct">
+      <label>${lbl}</label>
+      <input type="number" id="f-sgitd-pct" min="0" step="1" value="${state.sgitd.percentual ?? ''}" placeholder="ex.: 30"
+        oninput="onSgitdPctInput()">
+      <div class="hint">Informe apenas números positivos — a direção do efeito já foi indicada acima.</div>
+    </div>`;
+  } else {
+    state.sgitd.percentual = null;
+  }
+  box.innerHTML = `${pctField}
+    <div class="fd">
+      <label>Comente sua percepção sobre esse efeito (opcional)</label>
+      <textarea id="f-sgitd-obs" rows="3" placeholder="Descreva o que você observa no dia a dia em relação ao SGITD…"
+        oninput="state.sgitd.comentario=this.value; markDirty()">${escHtml(state.sgitd.comentario || '')}</textarea>
+    </div>`;
+  if (render) markDirty();
+}
+
+function onSgitdPctInput() {
+  const el = $('f-sgitd-pct');
+  let v = el.value.replace('-', '');
+  el.value = v;
+  state.sgitd.percentual = v === '' ? null : Math.abs(+v);
+  errosValidacao.delete('f-sgitd-pct');
+  markDirty();
+}
+
+/* ---------- troca de cargo com confirmação ---------- */
+
+function temProgressoMacros() {
+  for (const mKey in state.macros) {
+    const m = state.macros[mKey];
+    if (m.executa) return true;
+    if (m.volMes || m.tempoHoras || m.obs || m.temSazon) return true;
+    if (m.custom && m.custom.length) return true;
+    for (const gKey in m.grupos) {
+      const g = m.grupos[gKey];
+      if (g.executa === false) return true;
+      if (g.percentual || g.obs) return true;
+    }
+  }
+  for (const mKey in state.macrosAdicionais) {
+    const m = state.macrosAdicionais[mKey];
+    if (m.executa) return true;
+    if (m.volMes || m.tempoHoras || m.obs || m.temSazon) return true;
+    if (m.custom && m.custom.length) return true;
+    for (const gKey in m.grupos) {
+      const g = m.grupos[gKey];
+      if (g.executa === false) return true;
+      if (g.percentual || g.obs) return true;
+    }
+  }
+  if (state.coberturaItd) return true;
+  return false;
+}
+
+function onCargoSelectChange() {
+  const novo = $('f-cargo').value;
+  const anterior = state.cargo;
+  if (anterior && novo !== anterior && temProgressoMacros()) {
+    pendingCargoValue = novo;
+    $('f-cargo').value = anterior; // reverte visualmente até confirmação
+    abrirConfirmacaoTrocaCargo(anterior, novo);
+    return;
+  }
+  aplicarTrocaCargo(novo);
+}
+
+function abrirConfirmacaoTrocaCargo(anterior, novo) {
+  const novoLabel = novo ? `<strong>${escHtml(novo)}</strong>` : '<em>nenhum cargo selecionado</em>';
+  openMd(`<div class="mdh"><h3>⚠️ Trocar de cargo?</h3><button class="ic" onclick="cancelarTrocaCargo()">✕</button></div>
+    <div class="mdb">
+      <p>Você selecionou <strong>${escHtml(anterior)}</strong> e já preencheu informações de processos de ITD
+      para esse cargo.</p>
+      <p>Cada cargo executa processos diferentes. Se continuar com a troca para ${novoLabel},
+      <strong>as informações preenchidas na seção de processos serão apagadas</strong> e você começará essa
+      seção do zero para o novo cargo. Seus dados de identificação, dedicação de tempo e percepção sobre o SGITD
+      serão mantidos.</p>
+      <p style="font-weight:600;color:var(--text)">Deseja continuar com a mudança de cargo?</p>
+    </div>
+    <div class="mdf">
+      <button class="btn alt" onclick="cancelarTrocaCargo()">Cancelar</button>
+      <button class="btn danger" onclick="confirmarTrocaCargo()">Sim, trocar e limpar processos</button>
+    </div>`);
+}
+
+function cancelarTrocaCargo() {
+  pendingCargoValue = null;
+  closeMd();
+}
+
+function confirmarTrocaCargo() {
+  const novo = pendingCargoValue;
+  pendingCargoValue = null;
+  closeMd();
+  $('f-cargo').value = novo;
+  state.macros = {};
+  state.macrosAdicionais = {};
+  state.coberturaItd = '';
+  aplicarTrocaCargo(novo);
+}
+
+function aplicarTrocaCargo(novo) {
+  state.cargo = novo;
+  onIdChange();
+}
+
+/* ---------- identificação: agregador ---------- */
+
+function onIdChange() {
+  state.nome = $('f-nome').value.trim();
+  state.lotacao = $('f-lotacao').value;
+  state.cargaHoraria = +$('f-carga').value;
+  state.plantao.ativo = $('f-plantao').value === 'sim';
+  state.plantao.regime = state.plantao.ativo ? $('f-regime').value : '';
+  renderMacros();
+  renderCobertura();
+  markDirty();
+}
+
+/* ---------- render macros / etapas ---------- */
+
+function macroTemErro(prefix, mKey) {
+  const p = prefix + escAttr(mKey);
+  for (const id of errosValidacao) if (id.startsWith(p)) return true;
+  return false;
+}
+
+function normalizaPctEtapa(v) {
+  if (v == null || v === '' || isNaN(v)) return null;
+  v = Math.round(+v);
+  if (v <= 0) return null;
+  return Math.min(100, v);
+}
+
+function renderMacros() {
+  const box = $('macros-container');
+  const { cargo, lotacao } = state;
+  if (!cargo) { box.innerHTML = '<div class="empt">Selecione seu cargo para ver os processos de ITD aplicáveis.</div>'; return; }
+  const macros = macrosVisiveis();
+  if (!macros.length) { box.innerHTML = '<div class="empt">Nenhum processo encontrado para este cargo e lotação.</div>'; return; }
+
+  let html = '';
+  macros.forEach(macro => {
+    const mKey = macroKey(macro);
+    const ent = getMacroEntry(mKey);
+    const grupos = gruposVisiveis(macro, cargo, lotacao);
+    const mPrefix = 'macro-' + escAttr(mKey);
+    const somaPct = somaEtapasAtivas(mKey, macro);
+    const pctOk = !ent.executa || Math.abs(somaPct - 100) < 0.5;
+    const sazLabel = ent.temSazon ? '<span class="badge filled">Sazonalidade informada</span>' : '';
+    const obsLabel = ent.obs ? '<span class="badge filled">Comentários</span>' : '';
+
+    html += `<div class="macro ${ent.executa ? 'on' : 'off'}">
+      <div class="macro-hd">
+        <div style="flex:1">
+          <h3>${escHtml(macro.nome)}</h3>
+          <p>${escHtml(descricaoPublica(macro.descricao))}</p>
+        </div>
+        ${htmlExecutoSwitch(ent.executa, mKey)}
+      </div>
+      <div class="macro-bd ${macroTemErro('macro-', mKey) ? 'macro-bd-err' : ''}">
+        <div class="vol-block">
+          <div class="fd ${temErro(mPrefix+'-vol')?'field-err':''}" id="${mPrefix}-vol" data-val-field="${mPrefix}-vol">
+            <label>Quantidade de processos por mês</label>
+            <input type="number" min="0" step="any" value="${ent.volMes??''}" placeholder="ex.: 20 processos"
+              oninput="updMacro('${escJs(mKey)}','volMes',this.value===''?null:+this.value); errosValidacao.delete('${mPrefix}-vol')">
+            <div class="hint">Quantos processos de ITD deste tipo você trata por mês, em média.</div>
+          </div>
+          <div class="action-row">
+            <button type="button" class="btn lg sec ${ent.temSazon?'on':''}" onclick="modalSazon('${escJs(mKey)}')">📅 Informar sazonalidade mensal</button>
+            ${sazLabel}
+          </div>
+        </div>
+        <div class="grid2" style="margin-bottom:14px">
+          <div class="fd ${temErro(mPrefix+'-tempo')?'field-err':''}" id="${mPrefix}-tempo" data-val-field="${mPrefix}-tempo">
+            <label>Horas médias gastas em cada processo</label>
+            <input type="number" min="0" step="0.5" value="${ent.tempoHoras??''}" placeholder="ex.: 8"
+              oninput="updMacro('${escJs(mKey)}','tempoHoras',this.value===''?null:+this.value); errosValidacao.delete('${mPrefix}-tempo')">
+            <div class="hint"><strong>Atenção:</strong> informe o tempo gasto em <strong>cada processo individual</strong>, não a soma de todos os processos do mês.</div>
+          </div>
+          <div class="fd" style="display:flex;flex-direction:column;justify-content:flex-end">
+            <div class="action-row" style="margin:0">
+              <button type="button" class="btn lg sec ${ent.obs?'on':''}" onclick="modalObsMacro('${escJs(mKey)}')">💬 Adicionar comentários</button>
+              ${obsLabel}
+            </div>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 8px"><strong>Distribuição do tempo dentro de cada processo</strong> — qual % do tempo de <em>um</em> processo você gasta em cada etapa (soma = 100% entre as que executa):</p>
+        <div class="sum-bar sum-sticky ${pctOk?'ok':'warn'} ${temErro(mPrefix+'-sum')?'proc-err':''}" id="${mPrefix}-sum">${textoSomaEtapas(somaPct, pctOk)}</div>`;
+
+    grupos.forEach(g => {
+      const gKey = grupoKey(g);
+      const ge = getGrupoEntry(mKey, gKey);
+      const off = ge.executa === false;
+      const etapaId = mPrefix + '-etapa-' + escAttr(gKey);
+      html += `<div class="proc ${off?'off':''} ${temErro(etapaId)?'proc-err':''}" id="${etapaId}">
+        <h4>${escHtml(g.nome)}</h4>
+        <div class="desc">${escHtml(descricaoPublica(g.descricao))}</div>
+        <label class="na" style="margin-bottom:8px"><input type="checkbox" ${off?'checked':''} onchange="toggleEtapa('${escJs(mKey)}','${escJs(gKey)}',this.checked)"> Não executo esta etapa</label>
+        ${off ? '' : `<div class="pct-row">
+          <input type="number" min="1" max="100" step="1" class="${temErro(etapaId)?'input-err':''}" value="${ge.percentual??''}" placeholder="ex.: 25"
+            oninput="updEtapaPct('${escJs(mKey)}','${escJs(gKey)}',this.value===''?null:+this.value)">
+          <span>% do tempo de cada processo</span>
+        </div>
+        <div id="pct-hint-${escAttr(mKey)}-${escAttr(gKey)}">${pctHelperHtml(ent.tempoHoras, ge.percentual)}</div>
+        ${htmlErroInline(etapaId)}`}
+      </div>`;
+    });
+
+    ent.custom.forEach((c, idx) => {
+      const customId = mPrefix + '-custom-' + idx;
+      html += `<div class="proc custom ${temErro(customId)?'proc-err':''}" id="${customId}" style="background:#f0fdf4;border-color:#bbf7d0">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <h4 style="flex:1">${escHtml(c.nome)} <span class="badge custom">Adicionado por você</span></h4>
+          <button type="button" class="ic" title="Remover" onclick="removerCustom('${escJs(mKey)}',${idx})">🗑️</button>
+        </div>
+        <div class="pct-row">
+          <input type="number" min="1" max="100" step="1" class="${temErro(customId)?'input-err':''}" value="${c.percentual??''}" placeholder="ex.: 10"
+            oninput="updCustom('${escJs(mKey)}',${idx},'percentual',this.value===''?null:+this.value)">
+          <span>% do tempo de cada processo</span>
+        </div>
+        <div id="pct-hint-custom-${escAttr(mKey)}-${idx}">${pctHelperHtml(ent.tempoHoras, c.percentual)}</div>
+        ${temErro(customId) ? `<div class="val-err-msg">Informe o percentual desta etapa adicionada.</div>` : ''}
+        <div class="fd" style="margin-top:8px">
+          <textarea rows="2" placeholder="Comentário (opcional)"
+            oninput="updCustom('${escJs(mKey)}',${idx},'obs',this.value)">${escHtml(c.obs||'')}</textarea>
+        </div>
+      </div>`;
+    });
+
+    html += `<div class="action-row">
+        <button type="button" class="btn alt sm" onclick="modalAddCustom('${escJs(mKey)}')">➕ Adicionar etapa que não está na lista</button>
+      </div>
+      </div></div>`;
+  });
+  box.innerHTML = html;
+  aplicarBloqueioFormulario();
+}
+
+/* ---------- cobertura / processos adicionais ---------- */
+
+function onCoberturaChange() {
+  state.coberturaItd = $('f-cobertura').value;
+  if (state.coberturaItd !== 'nao') {
+    state.macrosAdicionais = {};
+  }
+  renderCobertura();
+  markDirty();
+}
+
+function renderCobertura() {
+  const card = $('card-cobertura');
+  const extra = $('adicionais-extra');
+  if (!card) return;
+  if (!state.cargo) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  $('f-cobertura').value = state.coberturaItd || '';
+  const showExtra = state.coberturaItd === 'nao';
+  extra.style.display = showExtra ? 'block' : 'none';
+  if (showExtra) renderAdicionais();
+  aplicarBloqueioFormulario();
+}
+
+function renderAdicionais() {
+  const box = $('adicionais-container');
+  const sel = $('f-add-processo');
+  const vazio = $('adicionais-vazio');
+  const fdAdd = $('fd-add-processo');
+  const disponiveis = macrosDisponiveisAdicionar();
+  const adicionados = Object.keys(state.macrosAdicionais);
+
+  sel.innerHTML = '<option value="">— Selecione um processo —</option>' +
+    disponiveis.map(m => `<option value="${escHtml(macroKey(m))}">${escHtml(macroKey(m))}</option>`).join('');
+
+  if (!disponiveis.length && !adicionados.length) {
+    fdAdd.style.display = 'none';
+    vazio.style.display = 'block';
+    vazio.textContent = 'Todos os processos de ITD do mapa já aparecem na seção anterior. Se faltou alguma etapa, use “Adicionar etapa” em cada processo, ou revise sua resposta acima.';
+    box.innerHTML = '';
+    return;
+  }
+
+  fdAdd.style.display = disponiveis.length ? 'block' : 'none';
+  vazio.style.display = 'none';
+
+  let html = '';
+  adicionados.forEach(mKey => {
+    const macro = MAPA_DATA.macros.find(m => macroKey(m) === mKey);
+    if (!macro) return;
+    const ent = getMacroAdicionalEntry(mKey);
+    const grupos = gruposCatalogo(macro, state.lotacao);
+    const aPrefix = 'adic-' + escAttr(mKey);
+    const somaPct = somaEtapasAtivasAdicional(mKey, macro);
+    const pctOk = !ent.executa || Math.abs(somaPct - 100) < 0.5;
+    const sazLabel = ent.temSazon ? '<span class="badge filled">Sazonalidade informada</span>' : '';
+    const obsLabel = ent.obs ? '<span class="badge filled">Comentários</span>' : '';
+
+    html += `<div class="macro ${ent.executa ? 'on' : 'off'}">
+      <div class="macro-hd">
+        <div style="flex:1">
+          <h3>${escHtml(macro.nome)} <span class="badge pend">Complemento</span></h3>
+          <p>${escHtml(descricaoPublica(macro.descricao))}</p>
+        </div>
+        ${htmlExecutoSwitch(ent.executa, mKey, true)}
+        <button type="button" class="ic" title="Remover processo" onclick="removerProcessoAdic('${escJs(mKey)}')">🗑️</button>
+      </div>
+      <div class="macro-bd ${macroTemErro('adic-', mKey) ? 'macro-bd-err' : ''}">
+        <div class="vol-block">
+          <div class="fd ${temErro(aPrefix+'-vol')?'field-err':''}" id="${aPrefix}-vol" data-val-field="${aPrefix}-vol">
+            <label>Quantidade de processos por mês</label>
+            <input type="number" min="0" step="any" value="${ent.volMes??''}" placeholder="ex.: 20 processos"
+              oninput="updMacroAdic('${escJs(mKey)}','volMes',this.value===''?null:+this.value); errosValidacao.delete('${aPrefix}-vol')">
+            <div class="hint">Quantos processos de ITD deste tipo você trata por mês, em média.</div>
+          </div>
+          <div class="action-row">
+            <button type="button" class="btn lg sec ${ent.temSazon?'on':''}" onclick="modalSazon('${escJs(mKey)}',true)">📅 Informar sazonalidade mensal</button>
+            ${sazLabel}
+          </div>
+        </div>
+        <div class="grid2" style="margin-bottom:14px">
+          <div class="fd ${temErro(aPrefix+'-tempo')?'field-err':''}" id="${aPrefix}-tempo" data-val-field="${aPrefix}-tempo">
+            <label>Horas médias gastas em cada processo</label>
+            <input type="number" min="0" step="0.5" value="${ent.tempoHoras??''}" placeholder="ex.: 8"
+              oninput="updMacroAdic('${escJs(mKey)}','tempoHoras',this.value===''?null:+this.value); errosValidacao.delete('${aPrefix}-tempo')">
+            <div class="hint"><strong>Atenção:</strong> informe o tempo gasto em <strong>cada processo individual</strong>, não a soma de todos os processos do mês.</div>
+          </div>
+          <div class="fd" style="display:flex;flex-direction:column;justify-content:flex-end">
+            <div class="action-row" style="margin:0">
+              <button type="button" class="btn lg sec ${ent.obs?'on':''}" onclick="modalObsMacro('${escJs(mKey)}',true)">💬 Adicionar comentários</button>
+              ${obsLabel}
+            </div>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 8px"><strong>Distribuição do tempo dentro de cada processo</strong> — qual % do tempo de <em>um</em> processo você gasta em cada etapa (soma = 100% entre as que executa):</p>
+        <div class="sum-bar sum-sticky ${pctOk?'ok':'warn'} ${temErro(aPrefix+'-sum')?'proc-err':''}" id="${aPrefix}-sum">${textoSomaEtapas(somaPct, pctOk)}</div>`;
+
+    grupos.forEach(g => {
+      const gKey = grupoKey(g);
+      const ge = getGrupoAdicionalEntry(mKey, gKey);
+      const off = ge.executa === false;
+      const etapaId = aPrefix + '-etapa-' + escAttr(gKey);
+      html += `<div class="proc ${off?'off':''} ${temErro(etapaId)?'proc-err':''}" id="${etapaId}">
+        <h4>${escHtml(g.nome)}</h4>
+        <div class="desc">${escHtml(descricaoPublica(g.descricao))}</div>
+        <label class="na" style="margin-bottom:8px"><input type="checkbox" ${off?'checked':''} onchange="toggleEtapaAdic('${escJs(mKey)}','${escJs(gKey)}',this.checked)"> Não executo esta etapa</label>
+        ${off ? '' : `<div class="pct-row">
+          <input type="number" min="1" max="100" step="1" class="${temErro(etapaId)?'input-err':''}" value="${ge.percentual??''}" placeholder="ex.: 25"
+            oninput="updEtapaPctAdic('${escJs(mKey)}','${escJs(gKey)}',this.value===''?null:+this.value)">
+          <span>% do tempo de cada processo</span>
+        </div>
+        <div id="pct-hint-adic-${escAttr(mKey)}-${escAttr(gKey)}">${pctHelperHtml(ent.tempoHoras, ge.percentual)}</div>
+        ${htmlErroInline(etapaId)}`}
+      </div>`;
+    });
+
+    ent.custom.forEach((c, idx) => {
+      const customId = aPrefix + '-custom-' + idx;
+      html += `<div class="proc custom ${temErro(customId)?'proc-err':''}" id="${customId}" style="background:#f0fdf4;border-color:#bbf7d0">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <h4 style="flex:1">${escHtml(c.nome)} <span class="badge custom">Adicionado por você</span></h4>
+          <button type="button" class="ic" title="Remover" onclick="removerCustomAdic('${escJs(mKey)}',${idx})">🗑️</button>
+        </div>
+        <div class="pct-row">
+          <input type="number" min="1" max="100" step="1" class="${temErro(customId)?'input-err':''}" value="${c.percentual??''}" placeholder="ex.: 10"
+            oninput="updCustomAdic('${escJs(mKey)}',${idx},'percentual',this.value===''?null:+this.value)">
+          <span>% do tempo de cada processo</span>
+        </div>
+        <div id="pct-hint-adic-custom-${escAttr(mKey)}-${idx}">${pctHelperHtml(ent.tempoHoras, c.percentual)}</div>
+        ${temErro(customId) ? `<div class="val-err-msg">Informe o percentual desta etapa adicionada.</div>` : ''}
+        <div class="fd" style="margin-top:8px">
+          <textarea rows="2" placeholder="Comentário (opcional)"
+            oninput="updCustomAdic('${escJs(mKey)}',${idx},'obs',this.value)">${escHtml(c.obs||'')}</textarea>
+        </div>
+      </div>`;
+    });
+
+    html += `<div class="action-row">
+        <button type="button" class="btn alt sm" onclick="modalAddCustom('${escJs(mKey)}',true)">➕ Adicionar etapa que não está na lista</button>
+      </div>
+      </div></div>`;
+  });
+  box.innerHTML = html;
+  aplicarBloqueioFormulario();
+}
+
+function adicionarProcessoExtra() {
+  const mKey = $('f-add-processo').value;
+  if (!mKey) return;
+  getMacroAdicionalEntry(mKey);
+  $('f-add-processo').value = '';
+  renderAdicionais();
+  markDirty();
+}
+
+function removerProcessoAdic(mKey) {
+  if (!confirm('Remover este processo complementar?')) return;
+  delete state.macrosAdicionais[mKey];
+  renderAdicionais();
+  markDirty();
+}
+
+function toggleMacroAdic(mKey, on) {
+  getMacroAdicionalEntry(mKey).executa = on;
+  renderAdicionais();
+  markDirty();
+}
+
+function updMacroAdic(mKey, campo, valor) {
+  getMacroAdicionalEntry(mKey)[campo] = valor;
+  if (campo === 'tempoHoras') renderAdicionais();
+  markDirty();
+}
+
+function updEtapaPctAdic(mKey, gKey, v) {
+  const pct = normalizaPctEtapa(v);
+  getGrupoAdicionalEntry(mKey, gKey).percentual = pct;
+  errosValidacao.delete('adic-' + escAttr(mKey) + '-etapa-' + escAttr(gKey));
+  refreshSomaEtapasAdic(mKey);
+  const ent = getMacroAdicionalEntry(mKey);
+  const el = document.getElementById('pct-hint-adic-' + escAttr(mKey) + '-' + escAttr(gKey));
+  if (el) el.innerHTML = pctHelperHtml(ent.tempoHoras, pct);
+  markDirty();
+}
+
+function refreshSomaEtapasAdic(mKey) {
+  const macro = MAPA_DATA.macros.find(m => macroKey(m) === mKey);
+  const soma = somaEtapasAtivasAdicional(mKey, macro);
+  const ok = Math.abs(soma - 100) < 0.5;
+  const el = document.getElementById('adic-' + escAttr(mKey) + '-sum');
+  if (el) {
+    el.className = 'sum-bar sum-sticky ' + (ok ? 'ok' : 'warn');
+    el.textContent = textoSomaEtapas(soma, ok);
+  }
+}
+
+function toggleEtapaAdic(mKey, gKey, naoExecuta) {
+  const ge = getGrupoAdicionalEntry(mKey, gKey);
+  ge.executa = !naoExecuta;
+  if (naoExecuta) ge.percentual = null;
+  errosValidacao.delete('adic-' + escAttr(mKey) + '-etapa-' + escAttr(gKey));
+  renderAdicionais();
+  markDirty();
+}
+
+function salvarCustomAdic() {
+  const nome = $('cs-nome').value.trim();
+  if (!nome) { alert('Informe o nome da etapa.'); return; }
+  const pct = normalizaPctEtapa($('cs-pct').value === '' ? null : +$('cs-pct').value);
+  if (pct == null) { alert('Informe um percentual maior que 0 para a etapa adicionada.'); return; }
+  getMacroAdicionalEntry(modalCtx.mKey).custom.push({
+    nome,
+    percentual: pct,
+    obs: $('cs-obs').value,
+  });
+  closeMd(); renderAdicionais(); markDirty();
+}
+
+function updCustomAdic(mKey, idx, campo, valor) {
+  if (campo === 'percentual') valor = normalizaPctEtapa(valor);
+  getMacroAdicionalEntry(mKey).custom[idx][campo] = valor;
+  if (campo === 'percentual') {
+    refreshSomaEtapasAdic(mKey);
+    const ent = getMacroAdicionalEntry(mKey);
+    const el = document.getElementById('pct-hint-adic-custom-' + escAttr(mKey) + '-' + idx);
+    if (el) el.innerHTML = pctHelperHtml(ent.tempoHoras, valor);
+  }
+  markDirty();
+}
+
+function removerCustomAdic(mKey, idx) {
+  if (!confirm('Remover esta etapa adicionada?')) return;
+  getMacroAdicionalEntry(mKey).custom.splice(idx, 1);
+  renderAdicionais(); markDirty();
+}
+
+function toggleMacro(mKey, on) {
+  getMacroEntry(mKey).executa = on;
+  renderMacros();
+  markDirty();
+}
+
+function updMacro(mKey, campo, valor) {
+  getMacroEntry(mKey)[campo] = valor;
+  if (campo === 'tempoHoras') renderMacros();
+  markDirty();
+}
+
+function updEtapaPct(mKey, gKey, v) {
+  const pct = normalizaPctEtapa(v);
+  getGrupoEntry(mKey, gKey).percentual = pct;
+  errosValidacao.delete('macro-' + escAttr(mKey) + '-etapa-' + escAttr(gKey));
+  refreshSomaEtapas(mKey);
+  const ent = getMacroEntry(mKey);
+  const el = document.getElementById('pct-hint-' + escAttr(mKey) + '-' + escAttr(gKey));
+  if (el) el.innerHTML = pctHelperHtml(ent.tempoHoras, pct);
+  markDirty();
+}
+
+function refreshSomaEtapas(mKey) {
+  const macro = MAPA_DATA.macros.find(m => macroKey(m) === mKey);
+  const soma = somaEtapasAtivas(mKey, macro);
+  const ok = Math.abs(soma - 100) < 0.5;
+  const el = document.getElementById('macro-' + escAttr(mKey) + '-sum');
+  if (el) {
+    el.className = 'sum-bar sum-sticky ' + (ok ? 'ok' : 'warn');
+    el.textContent = textoSomaEtapas(soma, ok);
+  }
+}
+
+function toggleEtapa(mKey, gKey, naoExecuta) {
+  const ge = getGrupoEntry(mKey, gKey);
+  ge.executa = !naoExecuta;
+  if (naoExecuta) ge.percentual = null;
+  errosValidacao.delete('macro-' + escAttr(mKey) + '-etapa-' + escAttr(gKey));
+  renderMacros();
+  markDirty();
+}
+
+/* ---------- etapas customizadas ---------- */
+
+function modalAddCustom(mKey, adicional=false) {
+  modalCtx = { mKey, adicional };
+  openMd(`<div class="mdh"><h3>Adicionar etapa</h3><button class="ic" onclick="closeMd()">✕</button></div>
+    <div class="mdb">
+      <p>Use esta opção quando sentir que falta uma etapa relevante neste processo.</p>
+      <div class="fd"><label>Nome da etapa</label>
+        <input type="text" id="cs-nome" placeholder="ex.: Atender contribuinte no balcão sobre ITD">
+      </div>
+      <div class="fd"><label>% do tempo de cada processo</label>
+        <input type="number" id="cs-pct" min="1" max="100" step="1" placeholder="ex.: 10">
+      </div>
+      <div class="fd"><label>Comentário (opcional)</label><textarea id="cs-obs" rows="2"></textarea></div>
+    </div>
+    <div class="mdf"><button class="btn alt" onclick="closeMd()">Cancelar</button><button class="btn ok" onclick="salvarCustom()">Adicionar etapa</button></div>`);
+}
+
+function salvarCustom() {
+  const nome = $('cs-nome').value.trim();
+  if (!nome) { alert('Informe o nome da etapa.'); return; }
+  const pct = normalizaPctEtapa($('cs-pct').value === '' ? null : +$('cs-pct').value);
+  if (pct == null) { alert('Informe um percentual maior que 0 para a etapa adicionada.'); return; }
+  if (modalCtx.adicional) {
+    salvarCustomAdic();
+    return;
+  }
+  getMacroEntry(modalCtx.mKey).custom.push({
+    nome,
+    percentual: pct,
+    obs: $('cs-obs').value,
+  });
+  closeMd(); renderMacros(); markDirty();
+}
+
+function updCustom(mKey, idx, campo, valor) {
+  if (campo === 'percentual') valor = normalizaPctEtapa(valor);
+  getMacroEntry(mKey).custom[idx][campo] = valor;
+  if (campo === 'percentual') {
+    refreshSomaEtapas(mKey);
+    const ent = getMacroEntry(mKey);
+    const el = document.getElementById('pct-hint-custom-' + escAttr(mKey) + '-' + idx);
+    if (el) el.innerHTML = pctHelperHtml(ent.tempoHoras, valor);
+  }
+  markDirty();
+}
+
+function removerCustom(mKey, idx) {
+  if (!confirm('Remover este processo adicionado?')) return;
+  getMacroEntry(mKey).custom.splice(idx, 1);
+  renderMacros(); markDirty();
+}
+
+/* ---------- modais: sazonalidade e comentários (nível macro) ---------- */
+
+function openMd(html) { $('md').innerHTML = html; $('mbd').classList.add('on'); }
+function closeMd() { $('mbd').classList.remove('on'); modalCtx = null; }
+
+function modalSazon(mKey, adicional=false) {
+  modalCtx = { mKey, adicional };
+  const ent = adicional ? getMacroAdicionalEntry(mKey) : getMacroEntry(mKey);
+  const macro = MAPA_DATA.macros.find(m => macroKey(m) === mKey);
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const volMes = ent.volMes || 0;
+  const arr = (ent.sazon?.length === 12) ? ent.sazon : Array(12).fill(volMes);
+  openMd(`<div class="mdh"><h3>Sazonalidade — ${escHtml(macro.nome)}</h3><button class="ic" onclick="closeMd()">✕</button></div>
+    <div class="mdb">
+      <p>Altere os volumes mensais apenas se houver variação previsível entre meses.
+      A média dos 12 meses deve ser próxima do volume mensal informado (${fmt(volMes,0)}).</p>
+      <div class="saz">${meses.map((m,k)=>`<div><label>${m}</label><input type="number" id="sz-${k}" value="${arr[k]||0}" min="0" oninput="updSazonStats(${volMes})"></div>`).join('')}</div>
+      <div id="sz-stats" style="margin-top:12px;padding:12px;background:#f8fafc;border-radius:6px;font-size:13px"></div>
+      <div id="sz-alert" style="margin-top:8px"></div>
+    </div>
+    <div class="mdf"><button class="btn alt" onclick="closeMd()">Cancelar</button><button class="btn" onclick="salvarSazon()">Salvar sazonalidade</button></div>`);
+  updSazonStats(volMes);
+}
+
+function updSazonStats(volMes) {
+  const vals = []; for (let k=0;k<12;k++) vals.push(+($('sz-'+k)?.value)||0);
+  const soma = vals.reduce((a,b)=>a+b,0);
+  const media = soma/12;
+  $('sz-stats').innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+    <div><div style="font-size:10px;color:#64748b;text-transform:uppercase">Média mensal</div><div style="font-weight:700;font-size:16px">${fmt(media,1)}</div></div>
+    <div><div style="font-size:10px;color:#64748b;text-transform:uppercase">Volume informado</div><div style="font-weight:700;font-size:16px;color:#0284c7">${fmt(volMes,0)}</div></div>
+    <div><div style="font-size:10px;color:#64748b;text-transform:uppercase">Soma anual</div><div style="font-weight:700;font-size:16px">${fmt(soma,0)}</div></div></div>`;
+  let alert = '';
+  if (volMes > 0 && Math.abs(media - volMes)/volMes > 0.15) {
+    const diff = ((media-volMes)/volMes*100);
+    alert = `<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:8px 12px;border-radius:6px;font-size:12px">⚠ Média (${fmt(media,1)}) difere ${diff>=0?'+':''}${fmt(diff,0)}% do volume informado (${fmt(volMes,0)}).</div>`;
+  } else if (volMes > 0 && soma > 0) {
+    alert = `<div style="background:#dcfce7;border:1px solid #86efac;color:#15803d;padding:8px 12px;border-radius:6px;font-size:12px">✓ Sazonalidade consistente com o volume informado.</div>`;
+  }
+  $('sz-alert').innerHTML = alert;
+}
+
+function salvarSazon() {
+  const { mKey, adicional } = modalCtx || {};
+  const ent = adicional ? getMacroAdicionalEntry(mKey) : getMacroEntry(mKey);
+  const volMes = ent.volMes || 0;
+  const arr = []; for (let k=0;k<12;k++) arr.push(+($('sz-'+k)?.value)||0);
+  ent.sazon = arr;
+  ent.temSazon = detectaSazon(arr, volMes);
+  closeMd();
+  if (adicional) renderAdicionais();
+  else renderMacros();
+  markDirty();
+}
+
+function modalObsMacro(mKey, adicional=false) {
+  modalCtx = { mKey, adicional };
+  const ent = adicional ? getMacroAdicionalEntry(mKey) : getMacroEntry(mKey);
+  const macro = MAPA_DATA.macros.find(m => macroKey(m) === mKey);
+  openMd(`<div class="mdh"><h3>Comentários — ${escHtml(macro.nome)}</h3><button class="ic" onclick="closeMd()">✕</button></div>
+    <div class="mdb"><p>Notas, premissas ou contexto sobre este processo.</p>
+    <textarea id="ob-tx" rows="5" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px">${escHtml(ent.obs||'')}</textarea></div>
+    <div class="mdf"><button class="btn alt" onclick="closeMd()">Cancelar</button><button class="btn" onclick="salvarObsMacro()">Salvar comentários</button></div>`);
+}
+
+function salvarObsMacro() {
+  const { mKey, adicional } = modalCtx || {};
+  const ent = adicional ? getMacroAdicionalEntry(mKey) : getMacroEntry(mKey);
+  ent.obs = $('ob-tx').value;
+  closeMd();
+  if (adicional) renderAdicionais();
+  else renderMacros();
+  markDirty();
+}
+
+/* ---------- autosave ---------- */
+
+function markDirty() {
+  $('autosave-txt').textContent = 'Salvando…';
+  $('autosave-ind').querySelector('.dot').style.background = 'var(--warn)';
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(salvarAgora, 500);
+}
+
+function salvarAgora() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, ts: new Date().toISOString() }));
+    const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    $('autosave-txt').textContent = `Salvo automaticamente às ${hora}`;
+    $('autosave-ind').querySelector('.dot').style.background = 'var(--ok)';
+  } catch (e) {
+    $('autosave-txt').textContent = 'Falha ao salvar — ' + e.message;
+    $('autosave-ind').querySelector('.dot').style.background = 'var(--err)';
+  }
+}
+
+function carregar() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    state = Object.assign(defaultState(), parsed);
+    if (!state.dedicacao) state.dedicacao = { pctItd: null, pctOutros: null };
+    if (!state.sgitd) state.sgitd = { percepcao: '', percentual: null, comentario: '' };
+    if (!state.enviado) state.enviado = { enviado: false, enviadoEm: null };
+    if (!state.macrosAdicionais) state.macrosAdicionais = {};
+    if (!state.coberturaItd) state.coberturaItd = '';
+    if (state.lotacao === LOTACAO_COORD_LEGADO) state.lotacao = MAPA_DATA.coordArea;
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------- concluir / enviar / editar ---------- */
+
+function validarMacroEnt(ent, macro, grupos, prefix, getGrupoFn, somaFn) {
+  const erros = [];
+  const mKey = macroKey(macro);
+  const p = prefix + escAttr(mKey);
+  if (!ent.executa) return erros;
+
+  if (ent.volMes == null || ent.volMes === '' || isNaN(ent.volMes)) {
+    erros.push({ id: p+'-vol', scrollId: p+'-vol', msg: `${macro.nome}: informe a quantidade de processos por mês` });
+  }
+  if (ent.tempoHoras == null || ent.tempoHoras === '' || isNaN(ent.tempoHoras)) {
+    erros.push({ id: p+'-tempo', scrollId: p+'-tempo', msg: `${macro.nome}: informe as horas médias gastas em cada processo` });
+  }
+
+  let temEtapaComPct = false;
+  grupos.forEach(g => {
+    const gKey = grupoKey(g);
+    const ge = getGrupoFn(mKey, gKey);
+    const etapaId = p + '-etapa-' + escAttr(gKey);
+    if (ge.executa === false) return;
+    if (ge.percentual == null || ge.percentual <= 0) {
+      erros.push({ id: etapaId, scrollId: etapaId, msg: `${macro.nome} — ${g.nome}: informe o % ou marque "Não executo esta etapa"` });
+    } else temEtapaComPct = true;
+  });
+
+  ent.custom.forEach((c, idx) => {
+    const cid = p + '-custom-' + idx;
+    if (c.percentual == null || c.percentual <= 0) {
+      erros.push({ id: cid, scrollId: cid, msg: `${macro.nome} — etapa "${c.nome}": informe o percentual` });
+    } else temEtapaComPct = true;
+  });
+
+  const soma = somaFn(mKey, macro);
+  if (temEtapaComPct && Math.abs(soma - 100) >= 0.5) {
+    erros.push({ id: p+'-sum', scrollId: p+'-sum', msg: `${macro.nome}: a soma dos % das etapas deve ser 100% (atual: ${Math.round(soma)}%)` });
+  }
+  if (!temEtapaComPct) {
+    erros.push({ id: p+'-sum', scrollId: p+'-sum', msg: `${macro.nome}: informe o % de pelo menos uma etapa ou marque "Não executo este processo"` });
+  }
+
+  return erros;
+}
+
+function validarCompleto() {
+  const erros = [];
+  const add = (id, msg, scrollId) => erros.push({ id, msg, scrollId: scrollId || id });
+
+  if (!state.nome.trim()) add('f-nome', 'Nome completo');
+  if (!state.lotacao) add('f-lotacao', 'Lotação');
+  if (!state.cargo) add('f-cargo', 'Cargo');
+
+  if (state.dedicacao.pctItd == null || state.dedicacao.pctOutros == null) {
+    add('f-pct-itd', 'Percentual de tempo em ITD e em outras atividades');
+    add('f-pct-outros', 'Percentual de tempo em ITD e em outras atividades');
+  } else if (Math.abs((state.dedicacao.pctItd || 0) + (state.dedicacao.pctOutros || 0) - 100) >= 0.5) {
+    add('f-pct-itd', 'Os percentuais de ITD e outras atividades devem somar 100%');
+    add('f-pct-outros', 'Os percentuais de ITD e outras atividades devem somar 100%');
+  }
+
+  if (!state.sgitd?.percepcao) add('f-sgitd-percepcao', 'Percepção sobre o impacto do SGITD');
+  if ((state.sgitd?.percepcao === 'diminuiu' || state.sgitd?.percepcao === 'aumentou') && state.sgitd.percentual == null) {
+    add('f-sgitd-pct', 'Percentual de aumento/queda percebido do SGITD');
+  }
+
+  if (state.plantao.ativo && !state.plantao.regime) add('f-regime', 'Regime de plantão / escala');
+
+  if (!state.coberturaItd) add('f-cobertura', 'Cobertura dos processos de ITD (seção 5)');
+  if (state.coberturaItd === 'nao') {
+    const temAdicional = Object.keys(state.macrosAdicionais).some(k => state.macrosAdicionais[k].executa);
+    const temDisponivel = macrosDisponiveisAdicionar().length > 0;
+    if (temDisponivel && !temAdicional) add('f-cobertura', 'Informe pelo menos um processo complementar de ITD');
+  }
+
+  if (state.cargo) {
+    macrosVisiveis().forEach(macro => {
+      const ent = getMacroEntry(macroKey(macro));
+      erros.push(...validarMacroEnt(
+        ent, macro, gruposVisiveis(macro, state.cargo, state.lotacao),
+        'macro-', getGrupoEntry, somaEtapasAtivas
+      ));
+    });
+    Object.keys(state.macrosAdicionais).forEach(mKey => {
+      const macro = MAPA_DATA.macros.find(m => macroKey(m) === mKey);
+      if (!macro) return;
+      erros.push(...validarMacroEnt(
+        getMacroAdicionalEntry(mKey), macro, gruposCatalogo(macro, state.lotacao),
+        'adic-', getGrupoAdicionalEntry, somaEtapasAtivasAdicional
+      ));
+    });
+  }
+
+  const seen = new Set();
+  return erros.filter(e => {
+    const k = e.id + '|' + e.msg;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function exibirErrosValidacao(erros) {
+  errosValidacao = new Set(erros.map(e => e.id));
+  const banner = $('val-banner');
+  banner.style.display = 'block';
+  banner.innerHTML = `<strong>⚠️ ${erros.length} pendência(s) — corrija antes de enviar</strong><ul>${
+    erros.map(e => `<li>${escHtml(e.msg)}</li>`).join('')
+  }</ul>`;
+
+  document.querySelectorAll('[data-val-field]').forEach(el => el.classList.remove('field-err'));
+  erros.forEach(e => {
+    if (e.id.startsWith('macro-') || e.id.startsWith('adic-')) return;
+    const el = document.querySelector(`[data-val-field="${e.id}"]`);
+    if (el) el.classList.add('field-err');
+  });
+
+  onSgitdChange(false);
+  renderMacros();
+  renderCobertura();
+
+  const alvo = document.getElementById(erros[0].scrollId) || document.querySelector(`[data-val-field="${erros[0].id}"]`);
+  if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function buildMacroprocessoPayload(macro, ent, grupos, complementar=false) {
+  const mKey = macroKey(macro);
+  const etapas = [];
+  grupos.forEach(g => {
+    const ge = complementar ? getGrupoAdicionalEntry(mKey, grupoKey(g)) : getGrupoEntry(mKey, grupoKey(g));
+    const pct = ge.percentual || 0;
+    const horas = horasFromPct(ent.tempoHoras, pct);
+    etapas.push({
+      codigo: g.codigo,
+      etapa: g.nome,
+      customizado: false,
+      executa: ge.executa !== false,
+      percentual_tempo: pct,
+      horas_mes_estimadas: horas.horasMes,
+      horas_dia_util_estimadas: horas.horasDia,
+      comentario: ge.obs || '',
+    });
+  });
+  ent.custom.forEach(c => {
+    const pct = c.percentual || 0;
+    const horas = horasFromPct(ent.tempoHoras, pct);
+    etapas.push({
+      codigo: null,
+      etapa: c.nome,
+      customizado: true,
+      executa: true,
+      percentual_tempo: pct,
+      horas_mes_estimadas: horas.horasMes,
+      horas_dia_util_estimadas: horas.horasDia,
+      comentario: c.obs || '',
+    });
+  });
+  const temSaz = detectaSazon(ent.sazon, ent.volMes);
+  return {
+    macroprocesso: mKey,
+    complementar_perfil: complementar,
+    executa: !!ent.executa,
+    volume_mes: ent.volMes,
+    tempo_horas_mes: ent.tempoHoras,
+    tempo_horas_por_processo: ent.tempoHoras,
+    tem_sazonalidade: temSaz,
+    sazonalidade: temSaz && ent.sazon?.length === 12 ? ent.sazon : null,
+    comentario: ent.obs || '',
+    etapas,
+  };
+}
+
+function buildPayloadJson() {
+  const macroprocessos = [];
+  macrosVisiveis().forEach(macro => {
+    const mKey = macroKey(macro);
+    const ent = getMacroEntry(mKey);
+    macroprocessos.push(buildMacroprocessoPayload(
+      macro, ent, gruposVisiveis(macro, state.cargo, state.lotacao), false
+    ));
+  });
+  const macroprocessos_complementares = [];
+  Object.keys(state.macrosAdicionais).forEach(mKey => {
+    const macro = MAPA_DATA.macros.find(m => macroKey(m) === mKey);
+    if (!macro) return;
+    macroprocessos_complementares.push(buildMacroprocessoPayload(
+      macro, getMacroAdicionalEntry(mKey), gruposCatalogo(macro, state.lotacao), true
+    ));
+  });
+  return {
+    versao: 'html-v12',
+    unidade: 'DAT Sul',
+    data_coleta: new Date().toISOString(),
+    identificacao: {
+      nome: state.nome,
+      lotacao: state.lotacao,
+      cargo: state.cargo,
+      carga_horaria_semanal: state.cargaHoraria,
+      plantao: state.plantao.ativo,
+      regime_plantao: state.plantao.regime || null,
+    },
+    dedicacao: {
+      pct_tempo_itd: state.dedicacao.pctItd,
+      pct_tempo_outros: state.dedicacao.pctOutros,
+    },
+    sgitd: {
+      percepcao: state.sgitd?.percepcao || null,
+      percentual: state.sgitd?.percentual ?? null,
+      comentario: state.sgitd?.comentario || null,
+    },
+    cobertura_itd: {
+      exaustiva: state.coberturaItd === 'sim',
+      resposta: state.coberturaItd || null,
+    },
+    macroprocessos,
+    macroprocessos_complementares,
+  };
+}
+
+function syncFormHiddenFields() {
+  $('hf-subject').value = `Coleta DAT Sul — ${state.nome} (${state.cargo})`;
+  $('hf-sgitd-pct').value = state.sgitd?.percentual ?? '';
+  $('hf-sgitd-obs').value = state.sgitd?.comentario || '';
+  $('hf-cobertura').value = state.coberturaItd || '';
+  $('hf-payload').value = JSON.stringify(buildPayloadJson());
+}
+
+async function enviarWeb3Forms() {
+  syncFormHiddenFields();
+  const form = $('coletor-form');
+  const fd = new FormData(form);
+  fd.set('access_key', WEB3FORMS_KEY);
+  const resp = await fetch(WEB3FORMS_URL, { method: 'POST', body: fd });
+  if (!resp.ok) throw new Error(`Servidor respondeu com erro ${resp.status}`);
+  const data = await resp.json();
+  if (!data.success) throw new Error(data.message || 'Falha no envio — tente novamente.');
+  return data;
+}
+
+async function concluirEnviar() {
+  if (state.enviado?.enviado) return;
+  const erros = validarCompleto();
+  if (erros.length) {
+    exibirErrosValidacao(erros);
+    const status = $('envio-status');
+    status.textContent = `Não foi possível enviar: ${erros.length} campo(s) pendente(s).`;
+    status.style.color = 'var(--err)';
+    return;
+  }
+  limparErrosValidacao();
+  const btn = $('btn-concluir');
+  const status = $('envio-status');
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  status.textContent = 'Enviando suas respostas… aguarde.';
+  status.style.color = 'var(--muted)';
+
+  try {
+    await enviarWeb3Forms();
+    state.enviado = { enviado: true, enviadoEm: new Date().toISOString() };
+    salvarAgora();
+    aplicarBloqueioFormulario();
+    exportCSV();
+    showPaginaConfirmacao();
+    status.textContent = '';
+  } catch (e) {
+    status.textContent = '✗ Não foi possível enviar: ' + e.message;
+    status.style.color = 'var(--err)';
+    btn.disabled = false;
+    btn.textContent = '✅ Concluir e enviar respostas';
+    alert('Não foi possível enviar suas respostas.\n\n' + e.message + '\n\nVerifique sua conexão com a internet e tente novamente.');
+  }
+}
+
+function showPaginaConfirmacao() {
+  $('pagina-formulario').style.display = 'none';
+  $('pagina-confirmacao').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showPaginaFormulario() {
+  $('pagina-formulario').style.display = 'block';
+  $('pagina-confirmacao').style.display = 'none';
+}
+
+function editarRespostas() {
+  state.enviado.enviado = false;
+  salvarAgora();
+  showPaginaFormulario();
+  aplicarBloqueioFormulario();
+  $('envio-status').textContent = '';
+}
+
+function aplicarBloqueioFormulario() {
+  const locked = !!state.enviado?.enviado;
+  const wrapForm = $('wrap-form');
+  if (wrapForm) {
+    wrapForm.classList.toggle('locked', locked);
+    wrapForm.querySelectorAll('input, select, textarea, button').forEach(el => { el.disabled = locked; });
+  }
+  const cardCob = $('card-cobertura');
+  if (cardCob) {
+    cardCob.querySelectorAll('input, select, textarea, button').forEach(el => { el.disabled = locked; });
+  }
+  const btn = $('btn-concluir');
+  if (btn) {
+    btn.disabled = locked;
+    btn.textContent = locked ? '✅ Respostas enviadas' : '✅ Concluir e enviar respostas';
+    btn.style.opacity = locked ? '.7' : '1';
+  }
+  if (!locked) $('envio-status').textContent = '';
+}
+
+/* ---------- exportação CSV ---------- */
+
+function exportCSV() {
+  if (!state.nome || !state.cargo || !state.lotacao) { alert('Preencha nome, lotação e cargo.'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  const header = [
+    'nome','lotacao','cargo','carga_horaria_semanal','plantao','regime_plantao',
+    'pct_tempo_itd','pct_tempo_outros',
+    'sgitd_percepcao','sgitd_percentual','sgitd_comentario',
+    'cobertura_itd_exaustiva',
+    'processo','processo_complementar','executa_processo','volume_mes_processo','tempo_horas_por_processo',
+    'etapa','codigo_etapa','etapa_customizada','executa_etapa','percentual_tempo_etapa',
+    'horas_mes_estimada_etapa','horas_dia_util_estimada_etapa',
+    'tem_sazonalidade','volume_jan','volume_fev','volume_mar','volume_abr','volume_mai','volume_jun',
+    'volume_jul','volume_ago','volume_set','volume_out','volume_nov','volume_dez',
+    'comentario_processo','comentario_etapa','enviado','enviado_em','data_coleta','versao_coletor'
+  ];
+  const rows = [header.join(';')];
+  const base = [
+    state.nome, state.lotacao, state.cargo, state.cargaHoraria,
+    state.plantao.ativo ? 'SIM' : 'NAO', state.plantao.regime || '',
+    state.dedicacao.pctItd ?? '', state.dedicacao.pctOutros ?? '',
+    state.sgitd?.percepcao || '', state.sgitd?.percentual ?? '', (state.sgitd?.comentario||'').replace(/;/g,','),
+    state.coberturaItd || '',
+  ];
+  const enviadoCols = [
+    state.enviado?.enviado ? 'SIM' : 'NAO',
+    state.enviado?.enviadoEm || '',
+  ];
+
+  function appendMacroRows(macro, ent, grupos, complementar) {
+    const mKey = macroKey(macro);
+    const temSaz = detectaSazon(ent.sazon, ent.volMes);
+    const saz = temSaz && ent.sazon?.length === 12 ? ent.sazon : Array(12).fill('');
+    const compFlag = complementar ? 'SIM' : 'NAO';
+
+    if (!ent.executa) {
+      rows.push([...base, mKey, compFlag, 'NAO', '', '', '', '', '', '', '', '',
+        'NAO', ...saz.map(()=>''), (ent.obs||'').replace(/;/g,','), '', ...enviadoCols, today, 'html-v12'].join(';'));
+      return;
+    }
+
+    let firstRow = true;
+    const macroCols = () => [mKey, compFlag, 'SIM', ent.volMes ?? '', ent.tempoHoras ?? ''];
+
+    grupos.forEach(g => {
+      const ge = complementar
+        ? getGrupoAdicionalEntry(mKey, grupoKey(g))
+        : getGrupoEntry(mKey, grupoKey(g));
+      const pct = ge.percentual || 0;
+      const horas = horasFromPct(ent.tempoHoras, pct);
+      rows.push([...base, ...macroCols(),
+        g.nome, g.codigo, 'NAO', ge.executa !== false ? 'SIM' : 'NAO', pct,
+        fmt(horas.horasMes, 2), fmt(horas.horasDia, 2),
+        firstRow ? (temSaz ? 'SIM' : 'NAO') : '',
+        ...(firstRow ? saz : Array(12).fill('')),
+        firstRow ? (ent.obs||'').replace(/;/g,',') : '',
+        (ge.obs||'').replace(/;/g,','),
+        ...enviadoCols, today, 'html-v12'].join(';'));
+      firstRow = false;
+    });
+
+    ent.custom.forEach(c => {
+      const pct = c.percentual || 0;
+      const horas = horasFromPct(ent.tempoHoras, pct);
+      rows.push([...base, ...macroCols(),
+        c.nome, '', 'SIM', 'SIM', pct,
+        fmt(horas.horasMes, 2), fmt(horas.horasDia, 2),
+        firstRow ? (temSaz ? 'SIM' : 'NAO') : '',
+        ...(firstRow ? saz : Array(12).fill('')),
+        firstRow ? (ent.obs||'').replace(/;/g,',') : '',
+        (c.obs||'').replace(/;/g,','),
+        ...enviadoCols, today, 'html-v12'].join(';'));
+      firstRow = false;
+    });
+  }
+
+  macrosVisiveis().forEach(macro => {
+    appendMacroRows(macro, getMacroEntry(macroKey(macro)), gruposVisiveis(macro, state.cargo, state.lotacao), false);
+  });
+
+  Object.keys(state.macrosAdicionais).forEach(mKey => {
+    const macro = MAPA_DATA.macros.find(m => macroKey(m) === mKey);
+    if (!macro) return;
+    appendMacroRows(macro, getMacroAdicionalEntry(mKey), gruposCatalogo(macro, state.lotacao), true);
+  });
+
+  const slug = state.lotacao.replace(/[^a-z0-9]/gi,'_').slice(0,40);
+  const blob = new Blob(['\ufeff' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `coleta-DAT_Sul-v11-${slug}-${today}.csv`;
+  a.click();
+}
+
+/* ---------- boot ---------- */
+
+carregar();
+initSelectors();
+renderMacros();
+renderCobertura();
+aplicarBloqueioFormulario();
+if (state.enviado?.enviado) showPaginaConfirmacao();
+else showPaginaFormulario();
+salvarAgora();
+</script>
+</body>
+</html>
